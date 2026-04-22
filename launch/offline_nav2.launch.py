@@ -7,7 +7,7 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
-# ros2 launch offline_nav2 offline_nav2.launch.py params_file:=config/nav2_params_offline_local_only.yaml
+# ros2 launch offline_nav2 offline_nav2.launch.py params_file:=/home/ugv/colcon_ws/src/offline_nav2/config/nav2_params_offline.yaml
 def generate_launch_description():
     bringup_dir = get_package_share_directory('nav2_bringup')
     launch_dir = os.path.join(bringup_dir, 'launch')
