@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded: ~
       Splitter Ratio: 0.5833333134651184
-    Tree Height: 565
+    Tree Height: 657
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -42,6 +42,27 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 20
       Reference Frame: <Fixed Frame>
+      Value: true
+    - Class: rviz_default_plugins/Image
+      Enabled: true
+      Max Value: 1
+      Median window: 5
+      Min Value: 0
+      Name: Image
+      Normalize Range: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /hikrobot_camera/camera_left/image_raw
+      Value: true
+    - Class: rviz_default_plugins/Axes
+      Enabled: true
+      Length: 2
+      Name: Base_link
+      Radius: 0.5
+      Reference Frame: base_link
       Value: true
     - Class: rviz_default_plugins/TF
       Enabled: true
@@ -117,8 +138,8 @@ Visualization Manager:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: 2.697824478149414
-            Min Value: -6.116201400756836
+            Max Value: 6.394350528717041
+            Min Value: -2.4457101821899414
             Value: true
           Axis: Z
           Channel Name: z
@@ -143,7 +164,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Best Effort
-            Value: /accumulated_map_points
+            Value: /cloud_registered_body
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
@@ -402,7 +423,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 2.6400070190429688
+      Angle: 4.7100090980529785
       Class: rviz_default_plugins/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -412,7 +433,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 21.950063705444336
+      Scale: 26.530410766601562
       Target Frame: base_link
       Value: TopDownOrtho (rviz_default_plugins)
       X: 0
@@ -421,12 +442,14 @@ Visualization Manager:
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1300
+  Height: 1011
   Hide Left Dock: false
   Hide Right Dock: false
+  Image:
+    collapsed: false
   Navigation 2:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd000000020000000000000185000004befc0200000003fb000000100044006900730070006c006100790073010000003b00000270000000c700fffffffb0000001200530065006c0065006300740069006f006e01000002b1000001220000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007301000003d9000001200000005c00ffffff000000010000019b000004befc0200000003fb0000000a00560069006500770073010000003b0000015e000000a000fffffffb00000018004e0061007600690067006100740069006f006e00200032010000019f000001c7000001c700fffffffb0000001000530065006c006500630074006f0072010000036c0000018d000000ba00ffffff00000314000004be00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd0000000200000000000001850000039dfc0200000004fb000000100044006900730070006c006100790073010000003b000002cc000000c700fffffffb0000001200530065006c0065006300740069006f006e000000021b000000dc0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007300000002b6000001220000005c00fffffffb0000000a0049006d006100670065010000030d000000cb0000001600ffffff000000010000019b0000039dfc0200000003fb0000000a00560069006500770073010000003b000000d7000000a000fffffffb00000018004e0061007600690067006100740069006f006e002000320100000118000001c7000001c700fffffffb0000001000530065006c006500630074006f007201000002e5000000f3000000ba00ffffff000003140000039d00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Selector:
@@ -436,5 +459,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1600
-  X: 755
-  Y: 27
+  X: 320
+  Y: 32
