@@ -12,7 +12,10 @@
 ## Files
 
 - `launch/offline_nav2.launch.py`
-- `config/nav2_params_offline.yaml`
+- `config/nav2_params_offline_sim_elev.yaml`   — 全局(similarity) + 局部(elevation slope)
+- `config/nav2_params_offline_sim_livox.yaml`  — 全局(similarity) + 局部(livox 实时点云)
+- `config/nav2_params_offline_elev_only.yaml`  — 仅局部(elevation slope)，无全局
+- `config/nav2_params_offline_sim_only.yaml`   — 仅全局(similarity)，无局部静态层
 - `rviz/offline_nav2.rviz`
 
 ## Required TF tree
@@ -32,36 +35,55 @@ map → odom → camera_init → body → base_link
 
 ## Required topics
 
-| 话题 | 类型 | 说明 |
-|---|---|---|
-| `/clock` | `rosgraph_msgs/Clock` | bag 播放时加 `--clock` |
-| `/tf`, `/tf_static` | TF | FastLIO 提供 |
-| `/odom` | `nav_msgs/Odometry` | FastLIO 里程计 |
-| `/cloud_registered_body` | `sensor_msgs/PointCloud2` | 局部代价地图障碍源，`frame_id=body` |
-| `/similarity_costmap` | `nav_msgs/OccupancyGrid` | 全局代价地图输入，`frame_id=map` |
+| 话题 | 类型 | 说明 | 需要的模式 |
+|---|---|---|---|
+| `/clock` | `rosgraph_msgs/Clock` | bag 播放时加 `--clock` | 全部 |
+| `/tf`, `/tf_static` | TF | FastLIO 提供 | 全部 |
+| `/odom` | `nav_msgs/Odometry` | FastLIO 里程计 | 全部 |
+| `/cloud_registered_body` | `sensor_msgs/PointCloud2` | voxel_layer 障碍源，`frame_id=body` | 全部 |
+| `/similarity_costmap` | `nav_msgs/OccupancyGrid` | 全局静态地图，`frame_id=map` | sim_elev / sim_livox / sim_only |
+| `/elevation_costmap` | `nav_msgs/OccupancyGrid` | 坡度局部地图，`frame_id=odom` | sim_elev / elev_only |
+| `/livox_costmap` | `nav_msgs/OccupancyGrid` | 点云局部地图，`frame_id=odom` | sim_livox |
 
-## 全局代价地图（/similarity_costmap）
+## 代价地图架构
 
-`global_costmap.static_layer` 订阅 `/similarity_costmap`：
+### 四种配置模式对比
 
-- launch 文件本身不约束 global costmap 分辨率；分辨率由参数文件配置项决定
-- 当前 `global_costmap.global_costmap.ros__parameters.resolution = 0.10`（`config/nav2_params_offline.yaml`）
-- 建议发布端 `/similarity_costmap` 的分辨率与上面保持一致，避免重采样带来的边界锯齿或路径贴边误差
+| 参数 | sim_elev | sim_livox | elev_only | sim_only |
+|---|---|---|---|---|
+| local_costmap 插件 | elevation_static + inflation | livox_static + inflation | elevation_static + inflation | inflation only |
+| local_costmap 尺寸 | 10×10m | 20×20m | 10×10m | 10×10m |
+| global_costmap frame | `map`（静态） | `map`（静态） | `odom`（rolling 15m） | `map`（静态） |
+| global_costmap 数据源 | `/similarity_costmap` | `/similarity_costmap` | `/elevation_costmap` | `/similarity_costmap` |
+| behavior_server global_frame | `map` | `map` | `odom` | `map` |
+
+### 全局代价地图（/similarity_costmap）
+
+`global_costmap.similarity_static_layer` 订阅 `/similarity_costmap`：
 
 - 类型：`nav_msgs/OccupancyGrid`，`header.frame_id = map`
+- 分辨率：0.1m，尺寸：200×200m（持续累积，不随机器人移动重置）
 - QoS：**Volatile**（`map_subscribe_transient_local: False`），兼容 ros_bridge 转发
-- 时间戳：跟随仿真时间 `/clock`
 - 数据约定：`-1` 未知，`0` 自由，`100` 占据
 - 发布方需**持续以一定频率重发**（建议 ≥ 1 Hz），因为去掉 transient local 后 Nav2 启动时可能错过第一帧
 
-## 局部代价地图（/cloud_registered_body）
+### 局部代价地图（两种来源可选）
 
-`local_costmap.voxel_layer` 订阅 `/cloud_registered_body`：
+**方案 A：elevation_static_layer**（`/elevation_costmap`，用于 sim_elev / elev_only）：
+- 由 ROS1 `generate_elevation_costmap.py` 从 inpaint elevation 层坡度计算
+- 分辨率：0.1m，尺寸：15×15m（跟随 GridMap 滚动），`frame_id=odom`
+- 每帧刷新；i 轴（y）和 j 轴（x）均翻转以对齐 OccupancyGrid 约定
+- 坡度→代价：< 0.15 → 0，0.15~0.25 → 30，0.25~0.40 → 60，≥ 0.40 → 100
+- 缺点：elevation_mapping 自身积累导致动态障碍留下短暂痕迹
 
-- `clearing: False`：积累点云不做射线清除，避免 ray-tracing 把障碍物清掉
-- `marking: True`：正常标记障碍物
-- rolling window 滚动时自动清除移出视野的格子，不会产生鬼影
-- 局部地图范围：10 × 10 m，分辨率 0.05 m
+**方案 B：livox_static_layer**（`/livox_costmap`，用于 sim_livox）：
+- 由 ROS1 `generate_livox_costmap.py` 从 `/livox/points` 实时生成
+- 分辨率：0.1m，尺寸：20×20m（以 base_link 为中心滚动），`frame_id=odom`
+- 每帧完全重建，动态障碍不留痕迹
+- 过滤规则：25cm 盲区 | 高度 0.2~2.0m（相对 base_link z）| 每格 ≥2 个点才标障碍
+- 传感器有效范围（15m）内无障碍点的格子标为 free，超出范围标为 unknown
+
+**local_costmap 参数**：rolling，分辨率 0.1m（与所有来源一致）
 
 ## MPPI 控制器关键参数
 
@@ -195,28 +217,22 @@ local_costmap 成功激活后也随之被关闭。
 
 `nav2_params_offline_local_only.yaml` 仅配置了 controller 侧参数，缺少 `global_costmap` 和 `planner_server` 配置项。Nav2 bringup 仍会启动 planner_server，它使用默认配置（`global_costmap` 订阅 `/map` 的 static_layer）。本场景中 `/map` 话题不存在，NavfnPlanner 在空/未初始化的全局地图上尝试规划时发生段错误。lifecycle_manager 检测到心跳断开后杀掉所有节点。
 
-**修复**：在 `config/nav2_params_offline_local_only.yaml` 中补充 `global_costmap`（rolling window，不使用 static_layer）和 `planner_server` 的完整配置：
+**修复**：在 `config/nav2_params_offline_local_only.yaml` 中补充所有缺失的顶层节点配置，并将 `global_costmap` 改为 rolling window（odom 系，15×15m），以 `/elevation_costmap` 为数据源，不依赖 `/map`：
 
 ```yaml
 global_costmap:
   global_costmap:
     ros__parameters:
-      rolling_window: true
-      width: 200
-      height: 200
       global_frame: odom
-      robot_base_frame: base_link
-      transform_tolerance: 0.5
-      initial_transform_timeout: 60.0
-      plugins: ["inflation_layer"]   # 不依赖 /map
-      ...
-
-planner_server:
-  ros__parameters:
-    planner_plugins: ["GridBased"]
-    GridBased:
-      plugin: "nav2_navfn_planner::NavfnPlanner"
-      allow_unknown: true
+      rolling_window: true
+      width: 15
+      height: 15
+      resolution: 0.10
+      plugins: ["elevation_static_layer", "inflation_layer"]
+      elevation_static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /elevation_costmap
+        subscribe_to_updates: True
 ```
 
 ---

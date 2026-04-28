@@ -7,13 +7,14 @@ from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 
+# 更换配置文件：
 # ros2 launch offline_nav2 offline_nav2.launch.py params_file:=/home/ugv/colcon_ws/src/offline_nav2/config/nav2_params_offline_local_only.yaml
 def generate_launch_description():
     bringup_dir = get_package_share_directory('nav2_bringup')
     launch_dir = os.path.join(bringup_dir, 'launch')
 
     workspace_dir = os.path.dirname(os.path.dirname(__file__))
-    default_params_file = os.path.join(workspace_dir, 'config', 'nav2_params_offline_local_only.yaml')
+    default_params_file = os.path.join(workspace_dir, 'config', 'nav2_params_offline_sim_livox.yaml')
     default_rviz_config = os.path.join(workspace_dir, 'rviz', 'offline_nav2.rviz')
 
     namespace = LaunchConfiguration('namespace')

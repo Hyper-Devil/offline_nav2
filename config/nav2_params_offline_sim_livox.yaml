@@ -1,3 +1,30 @@
+# ============================================================
+# nav2_params_offline_sim_livox.yaml  —  全局(similarity) + 局部(livox 实时点云)
+#
+# local_costmap  : odom 系，rolling 10m，
+#                  livox_static_layer(/livox_costmap，实时点云) + inflation_layer
+# global_costmap : map 系，静态，
+#                  similarity_static_layer(/similarity_costmap) + inflation_layer
+# ============================================================
+
+bt_navigator:
+  ros__parameters:
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odom
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    wait_for_service_timeout: 1000
+    action_server_result_timeout: 900.0
+    navigators: ["navigate_to_pose", "navigate_through_poses"]
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+    navigate_through_poses:
+      plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+    error_code_names:
+      - compute_path_error_code
+      - follow_path_error_code
+
 controller_server:
   ros__parameters:
     controller_frequency: 20.0
@@ -117,50 +144,23 @@ local_costmap:
       global_frame: odom
       robot_base_frame: base_link
       rolling_window: true
-      width: 10
-      height: 10
-      resolution: 0.05
+      width: 20
+      height: 20
+      resolution: 0.10
       transform_tolerance: 0.5
       initial_transform_timeout: 60.0
       footprint: "[[-0.512, -0.389], [-0.512, 0.389], [0.512, 0.389], [0.512, -0.389]]"
       footprint_padding: 0.02
-      plugins: ["voxel_layer", "inflation_layer"]
+      plugins: ["livox_static_layer", "inflation_layer"]
+      livox_static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /livox_costmap
+        map_subscribe_transient_local: False
+        subscribe_to_updates: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 2.5
         inflation_radius: 1.0
-      voxel_layer:
-        plugin: "nav2_costmap_2d::VoxelLayer"
-        enabled: True
-        publish_voxel_map: True
-        origin_z: -2.5
-        z_resolution: 0.05
-        z_voxels: 120
-        max_obstacle_height: 3.5
-        mark_threshold: 0
-        observation_sources: pointcloud_mark pointcloud_clear
-        pointcloud_mark:
-          topic: /cloud_registered_body
-          max_obstacle_height: 3.5
-          min_obstacle_height: -2.5
-          clearing: False
-          marking: True
-          data_type: "PointCloud2"
-          raytrace_max_range: 5.0
-          raytrace_min_range: 0.0
-          obstacle_max_range: 4.0
-          obstacle_min_range: 0.0
-        pointcloud_clear:
-          topic: /cloud_registered_body
-          max_obstacle_height: 3.5
-          min_obstacle_height: -2.5
-          clearing: True
-          marking: False
-          data_type: "PointCloud2"
-          raytrace_max_range: 5.0
-          raytrace_min_range: 0.0
-          obstacle_max_range: 4.0
-          obstacle_min_range: 0.0
       always_send_full_costmap: True
 
 global_costmap:
@@ -168,21 +168,30 @@ global_costmap:
     ros__parameters:
       update_frequency: 1.0
       publish_frequency: 1.0
-      global_frame: odom
+      global_frame: map
       robot_base_frame: base_link
-      rolling_window: true
-      width: 200
-      height: 200
+      footprint: "[[-0.512, -0.389], [-0.512, 0.389], [0.512, 0.389], [0.512, -0.389]]"
+      footprint_padding: 0.02
       resolution: 0.10
-      transform_tolerance: 0.5
-      initial_transform_timeout: 60.0
       track_unknown_space: true
-      plugins: ["inflation_layer"]
+      plugins: ["similarity_static_layer", "inflation_layer"]
+      similarity_static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /similarity_costmap
+        map_subscribe_transient_local: False
+        subscribe_to_updates: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 2.5
         inflation_radius: 1.0
       always_send_full_costmap: True
+
+map_saver:
+  ros__parameters:
+    save_map_timeout: 5.0
+    free_thresh_default: 0.25
+    occupied_thresh_default: 0.65
+    map_subscribe_transient_local: True
 
 planner_server:
   ros__parameters:
@@ -207,9 +216,9 @@ smoother_server:
 behavior_server:
   ros__parameters:
     local_costmap_topic: local_costmap/costmap_raw
-    global_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
     local_footprint_topic: local_costmap/published_footprint
-    global_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
     cycle_frequency: 10.0
     behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
     spin:
@@ -223,13 +232,43 @@ behavior_server:
     assisted_teleop:
       plugin: "nav2_behaviors::AssistedTeleop"
     local_frame: odom
-    global_frame: odom
+    global_frame: map
     robot_base_frame: base_link
     transform_tolerance: 0.1
     simulate_ahead_time: 2.0
     max_rotational_vel: 0.8
     min_rotational_vel: 0.3
     rotational_acc_lim: 2.0
+
+waypoint_follower:
+  ros__parameters:
+    loop_rate: 20
+    stop_on_failure: false
+    action_server_result_timeout: 900.0
+    waypoint_task_executor_plugin: "wait_at_waypoint"
+    wait_at_waypoint:
+      plugin: "nav2_waypoint_follower::WaitAtWaypoint"
+      enabled: True
+      waypoint_pause_duration: 200
+
+route_server:
+  ros__parameters:
+    boundary_radius_to_achieve_node: 1.0
+    radius_to_achieve_node: 2.0
+    smooth_corners: true
+    operations: ["AdjustSpeedLimit", "ReroutingService", "CollisionMonitor"]
+    ReroutingService:
+      plugin: "nav2_route::ReroutingService"
+    AdjustSpeedLimit:
+      plugin: "nav2_route::AdjustSpeedLimit"
+    CollisionMonitor:
+      plugin: "nav2_route::CollisionMonitor"
+      max_collision_dist: 3.0
+    edge_cost_functions: ["DistanceScorer", "CostmapScorer"]
+    DistanceScorer:
+      plugin: "nav2_route::DistanceScorer"
+    CostmapScorer:
+      plugin: "nav2_route::CostmapScorer"
 
 velocity_smoother:
   ros__parameters:
@@ -287,7 +326,6 @@ docking_server:
     fixed_frame: "odom"
     dock_backwards: false
     dock_prestaging_tolerance: 0.5
-
     dock_plugins: ['simple_charging_dock']
     simple_charging_dock:
       plugin: 'opennav_docking::SimpleChargingDock'
@@ -303,7 +341,6 @@ docking_server:
       external_detection_rotation_pitch: -1.57
       external_detection_rotation_yaw: 0.0
       filter_coef: 0.1
-
     controller:
       k_phi: 3.0
       k_delta: 2.0
