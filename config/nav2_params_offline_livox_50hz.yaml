@@ -1,0 +1,243 @@
+# ============================================================
+# nav2_params_offline_livox_50hz.yaml  —  50 Hz 稳定基线，仅 Livox，无相似度地图
+#
+# local_costmap  : odom 系，rolling 20m，
+#                  livox_static_layer(/livox_costmap，实时点云) + inflation_layer
+# global_costmap : map 系，静态，
+#                  livox_static_layer(/livox_costmap) + inflation_layer
+# ============================================================
+
+bt_navigator:
+  ros__parameters:
+    global_frame: map
+    robot_base_frame: base_link
+    odom_topic: /odom
+    bt_loop_duration: 10
+    default_server_timeout: 20
+    wait_for_service_timeout: 1000
+    action_server_result_timeout: 900.0
+    navigators: ["navigate_to_pose", "navigate_through_poses"]
+    navigate_to_pose:
+      plugin: "nav2_bt_navigator::NavigateToPoseNavigator"
+    navigate_through_poses:
+      plugin: "nav2_bt_navigator::NavigateThroughPosesNavigator"
+    error_code_names:
+      - compute_path_error_code
+      - follow_path_error_code
+
+controller_server:
+  ros__parameters:
+    # FAST-LIO supplies pose / TF.  Its differentiated twist is not the
+    # chassis velocity feedback used by the MPPI dynamic model.
+    odom_topic: /bunker_odom
+    controller_frequency: 50.0
+    costmap_update_timeout: 0.30
+    min_x_velocity_threshold: 0.001
+    min_y_velocity_threshold: 0.001
+    min_theta_velocity_threshold: 0.001
+    failure_tolerance: 1000000.0
+    progress_checker_plugins: ["progress_checker"]
+    goal_checker_plugins: ["general_goal_checker"]
+    controller_plugins: ["FollowPath"]
+    use_realtime_priority: false
+
+    progress_checker:
+      plugin: "nav2_controller::SimpleProgressChecker"
+      required_movement_radius: 0.01
+      movement_time_allowance: 1000000.0
+
+    general_goal_checker:
+      stateful: True
+      plugin: "nav2_controller::SimpleGoalChecker"
+      xy_goal_tolerance: 0.35
+      yaw_goal_tolerance: 0.35
+
+    FollowPath:
+      plugin: "nav2_mppi_controller::MPPIController"
+      time_steps: 100  # 100 × 0.02 s = 2.0 s prediction horizon
+      model_dt: 0.02  # Match controller_frequency: 50 Hz
+      batch_size: 2000
+      ax_max: 3.0
+      ax_min: -2.0
+      ay_max: 3.0
+      ay_min: -3.0
+      az_max: 1.5
+      vx_std: 0.25
+      vy_std: 0.1
+      wz_std: 0.3
+      vx_max: 1.5
+      vx_min: -0.3
+      vy_max: 0.0
+      wz_max: 1.0
+      iteration_count: 1
+      prune_distance: 2.5
+      transform_tolerance: 0.3
+      temperature: 0.3
+      gamma: 0.03
+      motion_model: "DiffDrive"
+      visualize: false
+      regenerate_noises: false
+      TrajectoryVisualizer:
+        trajectory_step: 5
+        time_step: 3
+      critics: [
+        "ConstraintCritic", "CostCritic", "GoalCritic",
+        "GoalAngleCritic", "PathAlignCritic", "PathFollowCritic",
+        "PathAngleCritic", "PreferForwardCritic"]
+      ConstraintCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 4.0
+      GoalCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 1.4
+      GoalAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 3.0
+        threshold_to_consider: 0.5
+      PreferForwardCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        threshold_to_consider: 0.5
+      CostCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 1.5
+        near_collision_cost: 253
+        critical_cost: 300.0
+        consider_footprint: false
+        collision_cost: 1000000.0
+        near_goal_distance: 1.0
+        trajectory_point_step: 2
+      PathAlignCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 8.0
+        max_path_occupancy_ratio: 0.05
+        trajectory_point_step: 4
+        threshold_to_consider: 0.5
+        offset_from_furthest: 12
+        use_path_orientations: false
+      PathFollowCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 5.0
+        offset_from_furthest: 6
+        threshold_to_consider: 1.4
+      PathAngleCritic:
+        enabled: true
+        cost_power: 1
+        cost_weight: 2.0
+        offset_from_furthest: 12
+        threshold_to_consider: 0.5
+        max_angle_to_furthest: 0.785
+        mode: 0
+
+local_costmap:
+  local_costmap:
+    ros__parameters:
+      update_frequency: 5.0
+      publish_frequency: 2.0
+      global_frame: odom
+      robot_base_frame: base_link
+      rolling_window: true
+      width: 20
+      height: 20
+      resolution: 0.10
+      transform_tolerance: 0.5
+      initial_transform_timeout: 60.0
+      footprint: "[[-0.512, -0.389], [-0.512, 0.389], [0.512, 0.389], [0.512, -0.389]]"
+      footprint_padding: 0.02
+      plugins: ["livox_static_layer", "inflation_layer"]
+      livox_static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /livox_costmap
+        map_subscribe_transient_local: False
+        subscribe_to_updates: True
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.6
+      always_send_full_costmap: True
+
+global_costmap:
+  global_costmap:
+    ros__parameters:
+      update_frequency: 1.0
+      publish_frequency: 1.0
+      global_frame: map
+      robot_base_frame: base_link
+      footprint: "[[-0.512, -0.389], [-0.512, 0.389], [0.512, 0.389], [0.512, -0.389]]"
+      footprint_padding: 0.02
+      resolution: 0.10
+      track_unknown_space: true
+      plugins: ["livox_static_layer", "inflation_layer"]
+      livox_static_layer:
+        plugin: "nav2_costmap_2d::StaticLayer"
+        map_topic: /livox_costmap
+        map_subscribe_transient_local: False
+        subscribe_to_updates: True
+      inflation_layer:
+        plugin: "nav2_costmap_2d::InflationLayer"
+        cost_scaling_factor: 3.0
+        inflation_radius: 0.6
+      always_send_full_costmap: True
+
+planner_server:
+  ros__parameters:
+    expected_planner_frequency: 20.0
+    planner_plugins: ["GridBased"]
+    costmap_update_timeout: 1.0
+    GridBased:
+      plugin: "nav2_navfn_planner::NavfnPlanner"
+      tolerance: 0.5
+      use_astar: false
+      allow_unknown: true
+
+behavior_server:
+  ros__parameters:
+    local_costmap_topic: local_costmap/costmap_raw
+    global_costmap_topic: global_costmap/costmap_raw
+    local_footprint_topic: local_costmap/published_footprint
+    global_footprint_topic: global_costmap/published_footprint
+    cycle_frequency: 10.0
+    behavior_plugins: ["spin", "backup", "drive_on_heading", "assisted_teleop", "wait"]
+    spin:
+      plugin: "nav2_behaviors::Spin"
+    backup:
+      plugin: "nav2_behaviors::BackUp"
+    drive_on_heading:
+      plugin: "nav2_behaviors::DriveOnHeading"
+    wait:
+      plugin: "nav2_behaviors::Wait"
+    assisted_teleop:
+      plugin: "nav2_behaviors::AssistedTeleop"
+    local_frame: odom
+    global_frame: map
+    robot_base_frame: base_link
+    transform_tolerance: 0.1
+    simulate_ahead_time: 2.0
+    max_rotational_vel: 1.5
+    min_rotational_vel: 0.3
+    rotational_acc_lim: 2.0
+
+velocity_smoother:
+  ros__parameters:
+    smoothing_frequency: 50.0
+    scale_velocities: False
+    # Use the previous output as the ramp state.  Chassis odometry remains
+    # the controller's feedback, while the smoother retains its configured
+    # acceleration and deceleration limits without stalling at zero speed.
+    feedback: "OPEN_LOOP"
+    max_velocity: [1.5, 0.0, 1.0]
+    min_velocity: [-0.3, 0.0, -1.0]
+    max_accel: [3.0, 0.0, 1.5]
+    max_decel: [-2.0, 0.0, -1.5]
+    odom_topic: "/bunker_odom"
+    odom_duration: 0.1
+    deadband_velocity: [0.0, 0.0, 0.0]
+    velocity_timeout: 0.3

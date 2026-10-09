@@ -1,3 +1,6 @@
 # Added by code-review-graph
 .code-review-graph/
-launch/__pycache__/*
+__pycache__/
+*.py[cod]
+scripts/nav_test_*/
+scripts/nav2_debug_logs/

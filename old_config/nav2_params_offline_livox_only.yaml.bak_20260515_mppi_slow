@@ -1,10 +1,10 @@
 # ============================================================
-# nav2_params_offline_sim_livox.yaml  —  全局(similarity) + 局部(livox 实时点云)
+# nav2_params_offline_livox_only.yaml  —  仅 Livox，无相似度地图
 #
-# local_costmap  : odom 系，rolling 10m，
+# local_costmap  : odom 系，rolling 20m，
 #                  livox_static_layer(/livox_costmap，实时点云) + inflation_layer
 # global_costmap : map 系，静态，
-#                  similarity_static_layer(/similarity_costmap) + inflation_layer
+#                  livox_static_layer(/livox_costmap) + inflation_layer
 # ============================================================
 
 bt_navigator:
@@ -59,26 +59,24 @@ controller_server:
       ay_max: 3.0
       ay_min: -3.0
       az_max: 3.5
-      vx_std: 0.2
-      vy_std: 0.2
-      wz_std: 0.4
+      vx_std: 0.1
+      vy_std: 0.1
+      wz_std: 0.2
       vx_max: 1.5
       vx_min: -1.0
       vy_max: 0.0
       wz_max: 1.5
-      iteration_count: 1
+      iteration_count: 3
       prune_distance: 2.5
       transform_tolerance: 0.3
-      temperature: 0.3
-      gamma: 0.015
+      temperature: 0.15
+      gamma: 0.03
       motion_model: "DiffDrive"
       visualize: true
       regenerate_noises: true
       TrajectoryVisualizer:
         trajectory_step: 5
         time_step: 3
-      AckermannConstraints:
-        min_turning_r: 0.2
       critics: [
         "ConstraintCritic", "CostCritic", "GoalCritic",
         "GoalAngleCritic", "PathAlignCritic", "PathFollowCritic",
@@ -174,10 +172,10 @@ global_costmap:
       footprint_padding: 0.02
       resolution: 0.10
       track_unknown_space: true
-      plugins: ["similarity_static_layer", "inflation_layer"]
-      similarity_static_layer:
+      plugins: ["livox_static_layer", "inflation_layer"]
+      livox_static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
-        map_topic: /similarity_costmap
+        map_topic: /livox_costmap
         map_subscribe_transient_local: False
         subscribe_to_updates: True
       inflation_layer:
@@ -236,7 +234,7 @@ behavior_server:
     robot_base_frame: base_link
     transform_tolerance: 0.1
     simulate_ahead_time: 2.0
-    max_rotational_vel: 0.8
+    max_rotational_vel: 1.5
     min_rotational_vel: 0.3
     rotational_acc_lim: 2.0
 

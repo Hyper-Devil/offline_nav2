@@ -14,7 +14,7 @@ def generate_launch_description():
     launch_dir = os.path.join(bringup_dir, 'launch')
 
     workspace_dir = os.path.dirname(os.path.dirname(__file__))
-    default_params_file = os.path.join(workspace_dir, 'config', 'nav2_params_offline_sim_livox.yaml')
+    default_params_file = os.path.join(workspace_dir, 'config', 'nav2_params_offline_livox_only.yaml')
     default_rviz_config = os.path.join(workspace_dir, 'rviz', 'offline_nav2.rviz')
 
     namespace = LaunchConfiguration('namespace')
