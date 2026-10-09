@@ -17,7 +17,6 @@
 - `config/nav2_params_offline_livox_50hz.yaml`：当前唯一维护的导航参数。
 - `rviz/offline_nav2.rviz`：RViz 配置。
 - `scripts/record_nav_test.sh`：录制导航测试数据。
-- `scripts/collect_nav2_debug_logs.sh`：采集启动 / 运行诊断信息。
 - `old_config/`：旧启动文件、旧 YAML 与历史备份，不用于当前启动。
 
 本目录不是带 package.xml 的独立 ROS2 包，使用启动文件绝对路径，无需为修改 YAML 或 launch 编译。
